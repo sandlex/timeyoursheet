@@ -1,0 +1,113 @@
+{
+  "name": "timeyoursheet",
+  "displayName": "Time Your Sheet",
+  "description": "Flextime balance from your Markdown daily notes: log in/out, see your work-hours debt or advance in the status bar.",
+  "version": "0.1.0",
+  "publisher": "sandlex",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sandlex/timeyoursheet.git"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "timesheet",
+    "flextime",
+    "flexitime",
+    "work hours",
+    "time tracking",
+    "overtime",
+    "balance",
+    "markdown",
+    "daily notes"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "timeyoursheet.toggle",
+        "title": "Toggle In/Out",
+        "category": "Time Your Sheet"
+      },
+      {
+        "command": "timeyoursheet.in",
+        "title": "Log In",
+        "category": "Time Your Sheet"
+      },
+      {
+        "command": "timeyoursheet.out",
+        "title": "Log Out",
+        "category": "Time Your Sheet"
+      },
+      {
+        "command": "timeyoursheet.openNote",
+        "title": "Open Note",
+        "category": "Time Your Sheet"
+      },
+      {
+        "command": "timeyoursheet.useCurrentFile",
+        "title": "Use Current File as Note",
+        "category": "Time Your Sheet"
+      }
+    ],
+    "configuration": {
+      "title": "Time Your Sheet",
+      "properties": {
+        "timeyoursheet.file": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to the Markdown note that holds your log. Absolute, `~/…`, or relative to the first workspace folder. Easiest: open the note and run **Time Your Sheet: Use Current File as Note**."
+        },
+        "timeyoursheet.workHours": {
+          "type": "string",
+          "default": "09:00-17:00",
+          "pattern": "^\\d{1,2}:\\d{2}-\\d{1,2}:\\d{2}$",
+          "description": "Scheduled work hours on work days."
+        },
+        "timeyoursheet.lunch": {
+          "type": "string",
+          "default": "12:00-13:00",
+          "pattern": "^(\\d{1,2}:\\d{2}-\\d{1,2}:\\d{2})?$",
+          "description": "Lunch window, ignored both ways (no debt for leaving, no advance for working). Empty to disable."
+        },
+        "timeyoursheet.workDays": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7
+          },
+          "default": [1, 2, 3, 4, 5],
+          "description": "Work days as ISO weekday numbers: 1 = Monday … 7 = Sunday."
+        },
+        "timeyoursheet.newDaysOnTop": {
+          "type": "boolean",
+          "default": true,
+          "description": "When today's date header doesn't exist yet, create it above the newest day (true) or at the end of the file (false)."
+        },
+        "timeyoursheet.headingPrefix": {
+          "type": "string",
+          "default": "####",
+          "description": "Heading used for a new date header when the note has none yet. Otherwise the level of existing date headers is reused."
+        },
+        "timeyoursheet.codeLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show each day's net and running balance above its date header."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "package": "npx --yes @vscode/vsce package"
+  }
+}
