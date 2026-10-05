@@ -5,6 +5,10 @@
   "version": "0.1.3",
   "publisher": "sandlex",
   "license": "SEE LICENSE IN LICENSE",
+  "homepage": "https://sandlex.github.io/timeyoursheet/",
+  "bugs": {
+    "url": "https://github.com/sandlex/timeyoursheet/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/sandlex/timeyoursheet.git"

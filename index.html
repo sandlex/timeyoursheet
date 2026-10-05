@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Time Your Sheet — a VS Code extension</title>
+    <meta
+      name="description"
+      content="A VS Code extension that keeps a flextime balance from your Markdown notes: log in and out, see your work-hours debt or advance in the status bar."
+    />
+    <meta property="og:title" content="Time Your Sheet" />
+    <meta
+      property="og:description"
+      content="Flextime balance from your Markdown notes: log the exceptions, see your debt or advance in the status bar."
+    />
+    <meta property="og:image" content="images/balance.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      /* Solarized, like the screenshots. */
+      :root {
+        --bg: #fdf6e3;
+        --panel: #f5eedb;
+        --ink: #073642;
+        --muted: #657b83;
+        --line: #e4dcc4;
+        --accent: #268bd2;
+        --code: #eee8d5;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #002b36;
+          --panel: #073642;
+          --ink: #eee8d5;
+          --muted: #93a1a1;
+          --line: #0e4352;
+          --accent: #3d9ee0;
+          --code: #073642;
+          color-scheme: dark;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 0 24px 72px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      main { max-width: 640px; margin: 0 auto; }
+      header { padding: 64px 0 20px; }
+      h1 { font-size: 34px; margin: 0; letter-spacing: -0.025em; }
+      p { margin: 0 0 18px; }
+      .lede { font-size: 19px; color: var(--muted); }
+      code {
+        font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+        background: var(--code);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      pre {
+        font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+        margin: 0 0 18px;
+        padding: 14px 16px;
+        background: var(--code);
+        border-radius: 10px;
+        overflow-x: auto;
+      }
+      pre code { font: inherit; padding: 0; background: none; }
+      pre .h { color: var(--accent); font-weight: 700; }
+      pre .c { color: var(--muted); }
+      .cta {
+        display: inline-block;
+        margin: 14px 0 6px;
+        padding: 13px 24px;
+        background: var(--accent);
+        color: #fff;
+        text-decoration: none;
+        border-radius: 10px;
+        font-weight: 600;
+      }
+      .cta:hover { filter: brightness(1.08); }
+      .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+      .cta.secondary {
+        background: transparent;
+        color: var(--ink);
+        border: 1px solid var(--line);
+      }
+      .cta.secondary:hover { border-color: var(--muted); filter: none; }
+      .note { font-size: 14px; color: var(--muted); }
+      h2 {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin: 44px 0 14px;
+      }
+      /* Full-bleed horizontal strip of screenshots. */
+      .shots {
+        display: flex;
+        gap: 16px;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        padding: 4px 24px 18px;
+        margin: 0 calc(50% - 50vw);
+        scrollbar-width: thin;
+      }
+      .shots::before, .shots::after { content: ""; flex: 0 0 max(0px, calc(50vw - 360px - 24px)); }
+      .shots figure {
+        flex: 0 0 auto;
+        margin: 0;
+        scroll-snap-align: center;
+        width: 720px;
+        max-width: 86vw;
+      }
+      .shots a {
+        display: block;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--panel);
+        line-height: 0;
+      }
+      .shots img { display: block; width: 100%; height: auto; }
+      .shots figcaption { font-size: 14px; color: var(--muted); padding: 10px 4px 0; }
+      footer {
+        margin-top: 52px;
+        padding-top: 22px;
+        border-top: 1px solid var(--line);
+        font-size: 14px;
+        color: var(--muted);
+      }
+      footer a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Time Your Sheet</h1>
+      </header>
+      <p class="lede">
+        A VS Code extension that keeps a flextime balance from the Markdown note
+        you already write in all day.
+      </p>
+      <p>
+        You're assumed to be working during work hours, so you only log the
+        exceptions: stepping out, coming back, starting early, staying late. The
+        extension reads those lines and keeps a running <strong>debt</strong> or
+        <strong>advance</strong> in the status bar. A normal day needs no lines
+        at all.
+      </p>
+<pre><code><span class="h">#### 2026-10-02</span>
+<span class="c">- [x] review PR #482</span>
+14:54:09 out
+15:32:04 in
+18:05:12 out
+adjust -30m slow afternoon</code></pre>
+      <p>
+        Your note stays the database: no server, no account, no separate file.
+        One shortcut toggles in and out.
+      </p>
+      <p class="actions">
+        <a class="cta" href="https://github.com/sandlex/timeyoursheet/releases/latest">Download the .vsix</a>
+        <a class="cta secondary" href="https://github.com/sandlex/timeyoursheet">View on GitHub</a>
+      </p>
+      <p class="note">
+        Free. VS Code 1.75 or newer. Install it from the Extensions view:
+        <code>…</code> menu → <strong>Install from VSIX…</strong>
+      </p>
+
+      <h2>What it looks like</h2>
+    </main>
+
+    <div class="shots">
+      <figure>
+        <a href="images/balance.png">
+          <img
+            src="images/balance.png"
+            alt="The note in VS Code with a one-line summary above each day, and the status bar hover showing the balance and a table of the last five days"
+            loading="lazy"
+          />
+        </a>
+        <figcaption>Hover the status bar for the last few days. Each day gets a summary line.</figcaption>
+      </figure>
+      <figure>
+        <a href="images/out.png">
+          <img
+            src="images/out.png"
+            alt="Just logged 14:54:09 out; the status bar shows out 23m and the balance growing live"
+            loading="lazy"
+          />
+        </a>
+        <figcaption>While you're out during work hours, the debt grows live.</figcaption>
+      </figure>
+      <figure>
+        <a href="images/commands.png">
+          <img
+            src="images/commands.png"
+            alt="The command palette filtered to Time Your Sheet: Toggle In/Out, Log In, Log Out, Open Note, Choose Note, Use Current File as Note"
+            loading="lazy"
+          />
+        </a>
+        <figcaption>Toggle from the command palette, or bind it to a key.</figcaption>
+      </figure>
+    </div>
+
+    <main>
+      <p class="note">
+        Scroll sideways for more. Click any shot to see it full size.
+        Screenshots use example data.
+      </p>
+      <footer>
+        <a href="https://github.com/sandlex/timeyoursheet#readme">How the balance is calculated</a>
+        &nbsp;·&nbsp;
+        <a href="https://github.com/sandlex/timeyoursheet">Source on GitHub</a>
+        &nbsp;·&nbsp;
+        <a href="https://github.com/sandlex/timeyoursheet/issues">Report a problem</a>
+        <p style="margin-top: 14px">
+          No account, no servers, no analytics, no network requests at all.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>
