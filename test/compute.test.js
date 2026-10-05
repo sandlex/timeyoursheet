@@ -204,3 +204,27 @@ test('today without a section still produces a today entry', () => {
   assert.equal(r.today.date, '2026-08-25');
   assert.equal(r.today.current.state, 'in');
 });
+
+test('today, normal day with no lines, evening: nothing unbanked', () => {
+  const r = computeDay(day('2026-08-24', []), settings, { isToday: true, now: t(19) });
+  assert.equal(r.net, 0);
+  assert.equal(r.pending, 0);
+  const afterOut = computeDay(day('2026-08-24', ['16:30 out']), settings, { isToday: true, now: t(19) });
+  assert.equal(afterOut.pending, 0);
+});
+
+test('left early, came back in the evening: out stops costing at 17:00, evening work offsets it', () => {
+  const lines = ['11:45 in', '16:30 out'];
+  assert.equal(computeDay(day('2026-08-24', lines), settings, past).net, -(3 * H + 15 * M));
+  const evening = computeDay(day('2026-08-24', [...lines, '20:00 in', '21:00 out']), settings, past);
+  assert.equal(evening.net, -(2 * H + 15 * M));
+});
+
+test('the next work day with no lines leaves the balance unchanged', () => {
+  const note = '#### 2026-08-24\nbalance -2h15m\n11:45:00 in\n16:30:00 out\n';
+  for (const now of [t(10), t(18)]) {
+    const r = computeBalance(parseNote(note), settings, { date: '2026-08-25', t: now });
+    assert.equal(r.total, -(5 * H + 30 * M));
+    assert.equal(r.today.pending, 0);
+  }
+});

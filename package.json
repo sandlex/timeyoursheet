@@ -2,7 +2,7 @@
   "name": "timeyoursheet",
   "displayName": "Time Your Sheet",
   "description": "Flextime balance from your Markdown daily notes: log in/out, see your work-hours debt or advance in the status bar.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "sandlex",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {

@@ -99,7 +99,7 @@ There's no Marketplace release yet. Build and install the package locally:
 
 ```sh
 npm run package                                  # produces timeyoursheet-<version>.vsix
-code --install-extension timeyoursheet-0.1.0.vsix
+code --install-extension timeyoursheet-0.1.1.vsix
 ```
 
 ## Development

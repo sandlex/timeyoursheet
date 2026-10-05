@@ -73,7 +73,9 @@ function computeDay(day, settings, ctx) {
   if (state === 'in') {
     const end = Math.max(since, workday ? whe : since);
     intervals.push([since, end]);
-    if (ctx.isToday && ctx.now > end) pending = ctx.now - end;
+    // Only an explicit "in" can be unbanked evening work. A day with no lines is
+    // simply a normal day that ended at the end of work hours.
+    if (ctx.isToday && ctx.now > end && lastEvent && lastEvent.type === 'in') pending = ctx.now - end;
   } else if (ctx.isToday && workday && ctx.now < whe) {
     // Currently out: assume back now for the rest of the scheduled day.
     const back = Math.max(ctx.now, whs);
