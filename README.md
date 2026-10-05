@@ -6,23 +6,17 @@ You're assumed to be working during work hours. You only log the exceptions: ste
 
 Your note stays the database. There's no server, no account and no separate file: just a few lines mixed in with everything else you write during the day.
 
-## What it looks like
+![The balance in the status bar, with the last few days on hover and a summary above each day](images/balance.png)
 
-```markdown
-#### 2026-10-05
-balance -45m
-standup: nothing new
-14:54:09 out
-15:32:04 in
-16:23:45 out
-20:20:20 in
-21:24:52 out
-adjust -30m slow afternoon
-```
+*Hover the status bar for the last few days. Each date header gets a one-line summary of that day and the running balance.*
 
-Status bar: a clock icon with `-1h25m`. While you're out it shows a live counter, `out 23m · -1h08m`. Hover it for the last few days.
+![Out: a live counter in the status bar](images/out.png)
 
-Above every date header there's a small summary line: `day -40m · adjust -30m · balance -1h25m`.
+*While you're out during work hours, the status bar counts the minutes and the debt grows live.*
+
+![All commands in the command palette](images/commands.png)
+
+*Toggle in/out from the command palette, or bind it to a shortcut.*
 
 ## The lines it understands
 
@@ -49,9 +43,11 @@ net = time worked − scheduled time + adjusts        (lunch excluded from both)
 - **A normal day needs no lines at all.** No events means you worked your hours, so the day nets 0. The same goes for holidays and sick days: no lines, no debt.
 - **The first event decides the morning.**
   - If it's `out`, you're taken to have been working since the start of work hours.
-  - If it's `in`, you weren't working before it. `08:15 in` earns 45m; `09:40 in` costs 40m.
+  - If it's an `in` before the end of work hours, you weren't working before it. `08:15 in` earns 45m; `09:40 in` costs 40m.
+  - If it's an `in` after work hours (`20:18 in`), the day itself was normal and this is an evening session.
 - **Lunch is ignored both ways.** Leaving during lunch costs nothing, working through it earns nothing, and overrunning it costs the overrun.
 - **Staying late:** log `out` when you finish, e.g. `18:30 out` earns 1h30m. If you never log `out` after hours, the evening earns nothing. Forgetting costs you nothing, it just doesn't credit you.
+- **Evening sessions:** `20:20 in` … `21:24 out` earns the time between them. If you were still "in" from the day (say `11:05 in` and you left at 17:00 without logging it), an evening `in` means you left at the end of work hours.
 - **Leaving early:** a final `out` with no `in` after it means out for the rest of the day.
 - **Today is live.** While you're out, the debt grows by the minute. The rest of today's schedule is assumed to be worked, so the balance doesn't drop the moment the day starts.
 - **Weekends and other non-work days** have no schedule. Only explicit `in` → `out` pairs count, all as advance.
@@ -62,7 +58,7 @@ A session can't cross midnight: log `out` before midnight and `in` again after.
 
 | Command | |
 |---|---|
-| **Time Your Sheet: Toggle In/Out** | Logs whichever makes sense now. |
+| **Time Your Sheet: Toggle In/Out** | Logs whichever makes sense now. After work hours on a day you're still "in" from, it asks whether you stayed late (out) or are starting an evening session (in). |
 | **Time Your Sheet: Log In** / **Log Out** | Explicit versions. Refuses to log the same state twice in a row. |
 | **Time Your Sheet: Open Note** | Opens the note at today's section. Clicking the status bar item does the same. |
 | **Time Your Sheet: Use Current File as Note** | Points the extension at the open file. |
@@ -98,12 +94,13 @@ Malformed lines, such as `balance 45m` without a sign or a second `out` in a row
 
 ## Install
 
-There's no Marketplace release yet. Build and install the package locally:
+There's no Marketplace release yet. Build the package locally:
 
 ```sh
-npm run package                                  # produces timeyoursheet-<version>.vsix
-code --install-extension timeyoursheet-0.1.2.vsix
+npm run package          # produces timeyoursheet-<version>.vsix
 ```
+
+Then in VS Code: Extensions view → `…` menu → **Install from VSIX…**, and run **Developer: Reload Window**. (Or `code --install-extension timeyoursheet-<version>.vsix` if the `code` command is on your PATH.)
 
 ## Development
 
@@ -118,6 +115,7 @@ src/lib/insert.js       where to write a new line
 src/lib/present.js      status bar / tooltip / CodeLens text
 src/lib/settings.js     settings validation
 test/                   node:test suites; extension.test.js drives the glue through a fake vscode module
+scripts/screenshots.js  renders images/*.png from the real status/CodeLens/tooltip code
 ```
 
 ```sh
@@ -125,6 +123,13 @@ npm test
 ```
 
 To try it in a development host, open the folder in VS Code and press F5 ("Run Extension").
+
+To regenerate the screenshots (they use a sample week from `scripts/sample-note.js`):
+
+```sh
+npm i --no-save playwright-core @vscode/codicons @fontsource/jetbrains-mono
+node scripts/screenshots.js "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+```
 
 ## License
 

@@ -3,3 +3,6 @@ test/**
 .vscode/**
 .gitignore
 *.vsix
+node_modules/**
+scripts/**
+images/**
