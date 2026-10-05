@@ -85,6 +85,7 @@ class TimeYourSheet {
       vscode.commands.registerCommand(`${SECTION}.toggle`, () => this.log(null)),
       vscode.commands.registerCommand(`${SECTION}.openNote`, () => this.openNote()),
       vscode.commands.registerCommand(`${SECTION}.useCurrentFile`, () => this.useCurrentFile()),
+      vscode.commands.registerCommand(`${SECTION}.chooseNote`, () => this.chooseNote()),
       vscode.languages.registerCodeLensProvider({ scheme: 'file' }, {
         onDidChangeCodeLenses: this.lensEmitter.event,
         provideCodeLenses: (doc) => this.codeLenses(doc),
@@ -93,6 +94,13 @@ class TimeYourSheet {
         if (this.path && e.document.uri.scheme === 'file' && samePath(e.document.uri.fsPath, this.path)) {
           this.scheduleRefresh();
         }
+      }),
+      // Follow the note when it's renamed or moved inside VS Code.
+      vscode.workspace.onDidRenameFiles((e) => {
+        const p = notePath();
+        if (!p) return;
+        const hit = e.files.find((f) => f.oldUri.scheme === 'file' && samePath(f.oldUri.fsPath, p));
+        if (hit) this.setNotePath(hit.newUri.fsPath, true);
       }),
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration(SECTION)) {
@@ -160,8 +168,8 @@ class TimeYourSheet {
       this.result = null;
       this.parsed = null;
       this.status.text = '$(clock) Time Your Sheet: pick a note';
-      this.status.tooltip = 'Open your note and run "Time Your Sheet: Use Current File as Note".';
-      this.status.command = `${SECTION}.useCurrentFile`;
+      this.status.tooltip = 'Click to choose the note that holds your log.';
+      this.status.command = `${SECTION}.chooseNote`;
       this.lensEmitter.fire();
       return;
     }
@@ -172,7 +180,8 @@ class TimeYourSheet {
       this.result = null;
       this.parsed = null;
       this.status.text = '$(warning) Time Your Sheet: note not found';
-      this.status.tooltip = this.path;
+      this.status.tooltip = `Not found: ${this.path}\n\nClick to choose the note again.`;
+      this.status.command = `${SECTION}.chooseNote`;
       this.lensEmitter.fire();
       return;
     }
@@ -209,13 +218,14 @@ class TimeYourSheet {
   /** Log "in"/"out" under today's header. type null = toggle. */
   async log(type) {
     this.refresh();
-    if (!this.path) {
-      const pick = await vscode.window.showWarningMessage(
-        'Time Your Sheet: no note configured.',
-        'Use Current File',
-      );
-      if (pick) await this.useCurrentFile();
-      if (!this.path) return;
+    if (!this.path || !fs.existsSync(this.path)) {
+      // Never create a fresh note at a stale path (e.g. after a rename): ask instead.
+      const msg = this.path
+        ? `Time Your Sheet: note not found (${path.basename(this.path)}).`
+        : 'Time Your Sheet: no note configured.';
+      const pick = await vscode.window.showWarningMessage(msg, 'Choose Note…');
+      if (pick) await this.chooseNote();
+      if (!this.path || !fs.existsSync(this.path)) return;
     }
 
     const now = clock();
@@ -228,17 +238,7 @@ class TimeYourSheet {
 
     const line = `${formatClock(now.t, true)} ${type}`;
     const uri = vscode.Uri.file(this.path);
-    let doc;
-    try {
-      doc = await vscode.workspace.openTextDocument(uri);
-    } catch (err) {
-      if (!fs.existsSync(this.path)) {
-        fs.writeFileSync(this.path, '');
-        doc = await vscode.workspace.openTextDocument(uri);
-      } else {
-        throw err;
-      }
-    }
+    const doc = await vscode.workspace.openTextDocument(uri);
     const wasDirty = doc.isDirty;
     const plan = planInsert(doc.getText(), {
       date: now.date,
@@ -260,7 +260,7 @@ class TimeYourSheet {
   }
 
   async openNote() {
-    if (!this.path) return this.useCurrentFile();
+    if (!this.path || !fs.existsSync(this.path)) return this.chooseNote();
     const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(this.path));
     const editor = await vscode.window.showTextDocument(doc);
     const today = this.result && this.result.today;
@@ -271,16 +271,49 @@ class TimeYourSheet {
     }
   }
 
+  /** Save the note path where the current value lives (workspace or user settings). */
+  async setNotePath(p, followedRename = false) {
+    const info = config().inspect('file');
+    const target = info && info.workspaceValue !== undefined
+      ? vscode.ConfigurationTarget.Workspace
+      : vscode.ConfigurationTarget.Global;
+    await config().update('file', p, target);
+    this.watch();
+    this.refresh();
+    const verb = followedRename ? 'now following' : 'using';
+    vscode.window.showInformationMessage(`Time Your Sheet: ${verb} ${path.basename(p)}.`);
+  }
+
   async useCurrentFile() {
     const editor = vscode.window.activeTextEditor;
     if (!editor || editor.document.uri.scheme !== 'file') {
       vscode.window.showWarningMessage('Time Your Sheet: open your note first, then run this command again.');
       return;
     }
-    await config().update('file', editor.document.uri.fsPath, vscode.ConfigurationTarget.Global);
-    this.watch();
-    this.refresh();
-    vscode.window.showInformationMessage(`Time Your Sheet: using ${path.basename(editor.document.uri.fsPath)}.`);
+    await this.setNotePath(editor.document.uri.fsPath);
+  }
+
+  /** Pick the note: the file in the active editor, or browse for one. */
+  async chooseNote() {
+    const items = [];
+    const editor = vscode.window.activeTextEditor;
+    if (editor && editor.document.uri.scheme === 'file' && !(this.path && samePath(editor.document.uri.fsPath, this.path))) {
+      items.push({ label: `$(file) Use ${path.basename(editor.document.uri.fsPath)}`, description: 'the file open in the editor', action: 'current' });
+    }
+    items.push({ label: '$(folder-opened) Browse…', description: 'choose the note file', action: 'browse' });
+
+    const pick = items.length === 1 ? items[0] : await vscode.window.showQuickPick(items, { placeHolder: 'Which file holds your in/out log?' });
+    if (!pick) return;
+    if (pick.action === 'current') return this.useCurrentFile();
+
+    const dir = this.path ? path.dirname(this.path) : null;
+    const uris = await vscode.window.showOpenDialog({
+      canSelectMany: false,
+      openLabel: 'Use as Note',
+      defaultUri: dir && fs.existsSync(dir) ? vscode.Uri.file(dir) : undefined,
+      filters: { Markdown: ['md', 'markdown', 'txt'], 'All files': ['*'] },
+    });
+    if (uris && uris[0]) await this.setNotePath(uris[0].fsPath);
   }
 }
 

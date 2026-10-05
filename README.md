@@ -66,6 +66,9 @@ A session can't cross midnight: log `out` before midnight and `in` again after.
 | **Time Your Sheet: Log In** / **Log Out** | Explicit versions. Refuses to log the same state twice in a row. |
 | **Time Your Sheet: Open Note** | Opens the note at today's section. Clicking the status bar item does the same. |
 | **Time Your Sheet: Use Current File as Note** | Points the extension at the open file. |
+| **Time Your Sheet: Choose Note…** | Use the open file or browse for one. Clicking the status bar does this when the note isn't set or can't be found. |
+
+Renaming or moving the note inside VS Code updates the setting automatically. If you rename it outside VS Code (Finder, terminal), the status bar shows "note not found": click it to choose the file again.
 
 Lines are written as `HH:MM:SS in|out` at the end of today's section. If today has no section yet, one is created above the newest day (or at the end of the file, see `newDaysOnTop`). If the note has unsaved changes, the line is added to the editor but nothing is saved for you.
 
@@ -99,7 +102,7 @@ There's no Marketplace release yet. Build and install the package locally:
 
 ```sh
 npm run package                                  # produces timeyoursheet-<version>.vsix
-code --install-extension timeyoursheet-0.1.1.vsix
+code --install-extension timeyoursheet-0.1.2.vsix
 ```
 
 ## Development

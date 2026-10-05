@@ -39,7 +39,7 @@ const T = (h, m = 0, s = 0) => h * 3600 + m * 60 + s;
 test('registers all commands', () => {
   const env = setup('', { date: '2026-10-05', t: T(10) });
   try {
-    for (const id of ['in', 'out', 'toggle', 'openNote', 'useCurrentFile']) {
+    for (const id of ['in', 'out', 'toggle', 'openNote', 'useCurrentFile', 'chooseNote']) {
       assert.ok(env.state.commands.has(`timeyoursheet.${id}`), id);
     }
   } finally {
@@ -150,8 +150,88 @@ test('no note configured: status bar offers to pick one', () => {
   ext.activate(context);
   try {
     assert.match(state.statusItems[0].text, /pick a note/);
-    assert.equal(state.statusItems[0].command, 'timeyoursheet.useCurrentFile');
+    assert.equal(state.statusItems[0].command, 'timeyoursheet.chooseNote');
   } finally {
     context.subscriptions.forEach((s) => s.dispose());
+  }
+});
+
+test('renaming the note inside VS Code follows it', async () => {
+  const env = setup('#### 2026-10-05\nbalance -1h\n', { date: '2026-10-05', t: T(10) });
+  try {
+    const renamed = path.join(path.dirname(env.file), 'work-log.md');
+    fs.renameSync(env.file, renamed);
+    env.app.refresh();
+    assert.match(env.status.text, /note not found/);
+    assert.equal(env.status.command, 'timeyoursheet.chooseNote');
+
+    for (const l of env.state.renameListeners) {
+      l({ files: [{ oldUri: env.vscode.Uri.file(env.file), newUri: env.vscode.Uri.file(renamed) }] });
+    }
+    await new Promise((r) => setImmediate(r));
+    assert.equal(env.state.config.file, renamed);
+    assert.equal(env.status.text, '$(clock) -1h');
+    assert.equal(env.status.command, 'timeyoursheet.openNote');
+  } finally {
+    env.dispose();
+  }
+});
+
+test('renaming some other file is ignored', () => {
+  const env = setup('#### 2026-10-05\nbalance -1h\n', { date: '2026-10-05', t: T(10) });
+  try {
+    for (const l of env.state.renameListeners) {
+      l({ files: [{ oldUri: env.vscode.Uri.file('/tmp/other.md'), newUri: env.vscode.Uri.file('/tmp/x.md') }] });
+    }
+    assert.equal(env.state.config.file, env.file);
+  } finally {
+    env.dispose();
+  }
+});
+
+test('choose note: browse picks a file and the status recovers', async () => {
+  const env = setup('', { date: '2026-10-05', t: T(10) });
+  try {
+    const other = path.join(path.dirname(env.file), 'renamed.md');
+    fs.writeFileSync(other, '#### 2026-10-05\nbalance +30m\n');
+    env.state.config.file = path.join(path.dirname(env.file), 'gone.md');
+    env.app.refresh();
+    assert.match(env.status.text, /note not found/);
+
+    env.state.openDialog = () => [env.vscode.Uri.file(other)];
+    await env.state.commands.get('timeyoursheet.chooseNote')();
+    assert.equal(env.state.config.file, other);
+    assert.equal(env.status.text, '$(clock) +30m');
+  } finally {
+    env.dispose();
+  }
+});
+
+test('choose note: offers the file open in the editor', async () => {
+  const env = setup('', { date: '2026-10-05', t: T(10) });
+  try {
+    const other = path.join(path.dirname(env.file), 'current.md');
+    fs.writeFileSync(other, '#### 2026-10-05\nbalance -2h\n');
+    await env.vscode.window.showTextDocument(await env.vscode.workspace.openTextDocument(env.vscode.Uri.file(other)));
+    env.state.quickPick = (items) => items[0];
+    await env.state.commands.get('timeyoursheet.chooseNote')();
+    const qp = env.state.messages.find(([k]) => k === 'quickPick');
+    assert.deepEqual(qp[1], ['$(file) Use current.md', '$(folder-opened) Browse…']);
+    assert.equal(env.state.config.file, other);
+    assert.equal(env.status.text, '$(clock) -2h');
+  } finally {
+    env.dispose();
+  }
+});
+
+test('logging with a missing note asks instead of creating a new file', async () => {
+  const env = setup('#### 2026-10-05\nbalance 0\n', { date: '2026-10-05', t: T(10) });
+  try {
+    fs.renameSync(env.file, env.file + '.bak');
+    await env.state.commands.get('timeyoursheet.toggle')();
+    assert.equal(fs.existsSync(env.file), false);
+    assert.ok(env.state.messages.some(([k, m]) => k === 'warning' && /note not found \(note\.md\)/.test(m)));
+  } finally {
+    env.dispose();
   }
 });

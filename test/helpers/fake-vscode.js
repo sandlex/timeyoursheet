@@ -19,6 +19,10 @@ function createFakeVscode() {
     messages: [],
     changeListeners: [],
     configListeners: [],
+    renameListeners: [],
+    quickPick: null, // (items) => item
+    openDialog: null, // () => [uri]
+    configTargets: [],
     activeTextEditor: null,
   };
 
@@ -126,8 +130,10 @@ function createFakeVscode() {
       getConfiguration() {
         return {
           get: (key, def) => (key in state.config ? state.config[key] : def),
-          update: async (key, value) => {
+          inspect: (key) => ({ key, globalValue: state.config[key], workspaceValue: undefined }),
+          update: async (key, value, target) => {
             state.config[key] = value;
+            state.configTargets.push(target);
             for (const l of state.configListeners) l({ affectsConfiguration: () => true });
           },
         };
@@ -153,6 +159,10 @@ function createFakeVscode() {
         state.changeListeners.push(fn);
         return { dispose() {} };
       },
+      onDidRenameFiles(fn) {
+        state.renameListeners.push(fn);
+        return { dispose() {} };
+      },
       onDidChangeConfiguration(fn) {
         state.configListeners.push(fn);
         return { dispose() {} };
@@ -172,9 +182,9 @@ function createFakeVscode() {
         state.statusItems.push(item);
         return item;
       },
-      async showWarningMessage(msg) {
+      async showWarningMessage(msg, ...buttons) {
         state.messages.push(['warning', msg]);
-        return undefined;
+        return state.warningAnswer ? state.warningAnswer(msg, buttons) : undefined;
       },
       async showInformationMessage(msg) {
         state.messages.push(['info', msg]);
@@ -187,6 +197,14 @@ function createFakeVscode() {
       setStatusBarMessage(msg) {
         state.messages.push(['status', msg]);
         return { dispose() {} };
+      },
+      async showQuickPick(items) {
+        state.messages.push(['quickPick', items.map((i) => i.label)]);
+        return state.quickPick ? state.quickPick(items) : undefined;
+      },
+      async showOpenDialog(opts) {
+        state.messages.push(['openDialog', opts]);
+        return state.openDialog ? state.openDialog(opts) : undefined;
       },
       async showTextDocument(doc) {
         state.activeTextEditor = { document: doc, selection: null, revealRange() {} };
