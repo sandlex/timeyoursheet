@@ -9,9 +9,12 @@
 //   day net = time worked (lunch excluded) - scheduled time (lunch excluded) + adjusts
 //
 // Working intervals for a day are derived from its in/out events:
-//   * Before the first event: if the first event is "out" (or there are no events)
-//     on a work day, you are taken to be "in" from the start of work hours.
-//     If the first event is "in", you were out before it (e.g. a late start or an early one).
+//   * Before the first event: if the first event is "out" (or there are no events, or
+//     the first event is an evening "in" after work hours) on a work day, you are taken
+//     to be "in" from the start of work hours. If the first event is an "in" before the
+//     end of work hours, you were out before it (a late start, or an early one).
+//   * An "in" after work hours while already "in" from the day starts a new evening
+//     session: you are taken to have left at the end of work hours.
 //   * A trailing "in" with no "out" is closed at the end of work hours
 //     (or at the "in" itself if that is later): unlogged evening work earns nothing.
 //   * A trailing "out" means out for the rest of the day, except today, where
@@ -48,7 +51,10 @@ function computeDay(day, settings, ctx) {
   let state = 'out';
   let since = null;
 
-  if (workday && (events.length === 0 || events[0].type === 'out')) {
+  // Assume the scheduled day was worked unless the first line is an "in" before the
+  // end of work hours (a late or early start). An evening-only "in" doesn't cancel the day.
+  const first = events[0];
+  if (workday && (!first || first.type === 'out' || first.t >= whe)) {
     state = 'in';
     since = whs;
   }
@@ -56,6 +62,14 @@ function computeDay(day, settings, ctx) {
   let lastEvent = null;
   for (const e of events) {
     if (e.type === state) {
+      // "in" again after hours while still "in" from the day: you left at the end of
+      // work hours without logging it, and this is a new evening session.
+      if (e.type === 'in' && workday && since < whe && e.t >= whe) {
+        intervals.push([since, whe]);
+        since = e.t;
+        lastEvent = e;
+        continue;
+      }
       diagnostics.push({ line: e.line, message: `Already ${state}, ignored` });
       continue;
     }
@@ -73,9 +87,10 @@ function computeDay(day, settings, ctx) {
   if (state === 'in') {
     const end = Math.max(since, workday ? whe : since);
     intervals.push([since, end]);
-    // Only an explicit "in" can be unbanked evening work. A day with no lines is
-    // simply a normal day that ended at the end of work hours.
-    if (ctx.isToday && ctx.now > end && lastEvent && lastEvent.type === 'in') pending = ctx.now - end;
+    // Only an explicit evening (or non-work-day) "in" is shown as unbanked work.
+    // A day still "in" from work hours is just a normal day that ended at 17:00.
+    const eveningIn = lastEvent && lastEvent.type === 'in' && (!workday || lastEvent.t >= whe);
+    if (ctx.isToday && ctx.now > end && eveningIn) pending = ctx.now - end;
   } else if (ctx.isToday && workday && ctx.now < whe) {
     // Currently out: assume back now for the rest of the scheduled day.
     const back = Math.max(ctx.now, whs);
@@ -102,6 +117,11 @@ function computeDay(day, settings, ctx) {
     } else {
       current = { state: 'off', since: null, explicit: false };
     }
+    // After hours on a work day that is still "in" from the day, a toggle could mean
+    // "I stayed late, done now" (out) or "back for an evening session" (in).
+    current.ambiguous = Boolean(
+      workday && ctx.now >= whe && (!lastEvent || (lastEvent.type === 'in' && lastEvent.t < whe)),
+    );
   }
 
   return {

@@ -230,7 +230,17 @@ class TimeYourSheet {
 
     const now = clock();
     const current = this.result && this.result.today ? this.result.today.current : null;
-    if (type === null) type = nextToggle(current);
+    if (type === null && current && current.ambiguous) {
+      const pick = await vscode.window.showQuickPick(
+        [
+          { label: '$(debug-pause) Out', description: 'stayed late, done now: counts from the end of work hours', type: 'out' },
+          { label: '$(play) In', description: 'back for an evening session', type: 'in' },
+        ],
+        { placeHolder: 'After work hours: done for the day, or starting an evening session?' },
+      );
+      if (!pick) return;
+      type = pick.type;
+    } else if (type === null) type = nextToggle(current);
     else if (current && current.explicit && current.state === type) {
       vscode.window.showInformationMessage(`Time Your Sheet: already ${type} since ${formatClock(current.since)}.`);
       return;

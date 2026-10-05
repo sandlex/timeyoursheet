@@ -235,3 +235,30 @@ test('logging with a missing note asks instead of creating a new file', async ()
     env.dispose();
   }
 });
+
+test('toggle after hours on a normal day asks: stayed late or evening session', async () => {
+  const env = setup('#### 2026-10-05\nbalance 0\n', { date: '2026-10-05', t: T(18, 30) });
+  try {
+    env.state.quickPick = (items) => items.find((i) => i.type === 'out');
+    await env.state.commands.get('timeyoursheet.toggle')();
+    assert.match(env.read(), /18:30:00 out\n$/);
+    assert.equal(env.status.text, '$(clock) +1h30m');
+
+    env.setNow({ date: '2026-10-05', t: T(20, 10) });
+    await env.state.commands.get('timeyoursheet.toggle')(); // trailing out -> in, no question
+    assert.match(env.read(), /20:10:00 in\n$/);
+    assert.equal(env.state.messages.filter(([k]) => k === 'quickPick').length, 1);
+  } finally {
+    env.dispose();
+  }
+});
+
+test('toggle after hours: cancelling the question logs nothing', async () => {
+  const env = setup('#### 2026-10-05\nbalance 0\n', { date: '2026-10-05', t: T(18, 30) });
+  try {
+    await env.state.commands.get('timeyoursheet.toggle')();
+    assert.equal(env.read(), '#### 2026-10-05\nbalance 0\n');
+  } finally {
+    env.dispose();
+  }
+});

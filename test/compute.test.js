@@ -104,7 +104,7 @@ test('lunch can be disabled', () => {
 test('today, currently out: debt grows until now, rest of day assumed worked', () => {
   const r = computeDay(day('2026-08-24', ['14:54 out']), settings, { isToday: true, now: t(15, 4) });
   assert.equal(r.net, -10 * M);
-  assert.deepEqual(r.current, { state: 'out', since: t(14, 54), explicit: true, accruing: true });
+  assert.deepEqual(r.current, { state: 'out', since: t(14, 54), explicit: true, accruing: true, ambiguous: false });
 });
 
 test('today, out after hours: no further debt accrues', () => {
@@ -116,13 +116,13 @@ test('today, out after hours: no further debt accrues', () => {
 test('today, early morning before any event: neutral, state off', () => {
   const r = computeDay(day('2026-08-24', []), settings, { isToday: true, now: t(7) });
   assert.equal(r.net, 0);
-  assert.deepEqual(r.current, { state: 'off', since: null, explicit: false });
+  assert.deepEqual(r.current, { state: 'off', since: null, explicit: false, ambiguous: false });
 });
 
 test('today, during work hours with no events: implicitly in', () => {
   const r = computeDay(day('2026-08-24', []), settings, { isToday: true, now: t(10) });
   assert.equal(r.net, 0);
-  assert.deepEqual(r.current, { state: 'in', since: t(9), explicit: false });
+  assert.deepEqual(r.current, { state: 'in', since: t(9), explicit: false, ambiguous: false });
 });
 
 test('today, in after hours: pending time is reported but not counted', () => {
@@ -227,4 +227,42 @@ test('the next work day with no lines leaves the balance unchanged', () => {
     assert.equal(r.total, -(5 * H + 30 * M));
     assert.equal(r.today.pending, 0);
   }
+});
+
+test('normal day with only an evening session: the day still counts as worked', () => {
+  assert.equal(computeDay(day('2026-08-24', ['20:18 in', '22:34 out']), settings, past).net, 2 * H + 16 * M);
+});
+
+test('"in" after hours while still in from the day starts a new evening session', () => {
+  const r = computeDay(day('2026-08-24', ['11:05 in', '20:10 in', '21:30 out']), settings, past);
+  assert.equal(r.net, -(2 * H + 5 * M) + (H + 20 * M));
+  assert.equal(r.diagnostics.length, 0);
+});
+
+test('a second "in" during work hours is still reported as a duplicate', () => {
+  const r = computeDay(day('2026-08-24', ['08:00 in', '10:00 in']), settings, past);
+  assert.equal(r.net, H);
+  assert.equal(r.diagnostics.length, 1);
+});
+
+test('today, evening session on a normal day: pending until out', () => {
+  const r = computeDay(day('2026-08-24', ['20:10 in']), settings, { isToday: true, now: t(20, 40) });
+  assert.equal(r.net, 0);
+  assert.equal(r.pending, 30 * M);
+  assert.deepEqual(r.current, { state: 'in', since: t(20, 10), explicit: true, ambiguous: false });
+});
+
+test('today after hours: ambiguous only while still "in" from the day', () => {
+  const at = (lines, now) => computeDay(day('2026-08-24', lines), settings, { isToday: true, now }).current.ambiguous;
+  assert.equal(at([], t(18)), true);
+  assert.equal(at(['11:05 in'], t(18)), true);
+  assert.equal(at(['11:05 in'], t(16)), false);
+  assert.equal(at(['16:00 out'], t(18)), false);
+  assert.equal(at(['20:10 in'], t(20, 30)), false);
+  assert.equal(computeDay(day('2026-08-29', []), settings, { isToday: true, now: t(18) }).current.ambiguous, false);
+});
+
+test('an explicit late start does not show unbanked time in the evening', () => {
+  const r = computeDay(day('2026-08-24', ['11:05 in']), settings, { isToday: true, now: t(19) });
+  assert.equal(r.pending, 0);
 });
