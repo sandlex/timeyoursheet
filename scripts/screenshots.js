@@ -140,6 +140,7 @@ body { padding: 28px; font-family: Inter, -apple-system, sans-serif; font-size: 
 .palette kbd { font-family: Inter, sans-serif; font-size: 11px; border: 1px solid #c9c1a9; border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: #f5efdc; color: #586e75; }
 .palette .group { margin-left: auto; color: #d9ecf8; font-size: 12px; }
 .palette .pi:not(.sel) .group { color: #93a1a1; }
+.palette .pi.sep { border-top: 1px solid #d3cbb7; border-radius: 0 0 4px 4px; padding-top: 1px; }
 .status .ours.focus { background: #268bd2; color: #fff; }
 ${css}
 </style></head><body><div class="win">
@@ -169,12 +170,17 @@ ${tooltip}${overlay || ''}
 </div>${caption}</body></html>`;
 }
 
-const COMMANDS = ['Toggle In/Out', 'Log In', 'Log Out', 'Open Note', 'Choose Note…', 'Use Current File as Note'];
+// Command titles exactly as in package.json, in the order VS Code lists them for
+// ">Time Your Sheet": the recently used one first, then the rest alphabetically.
+const TITLES = require('../package.json').contributes.commands.map((c) => c.title);
+const RECENT = 'Toggle In/Out';
+const COMMANDS = [RECENT, ...TITLES.filter((t) => t !== RECENT).sort((a, b) => a.localeCompare(b))];
+const GROUPS = { 0: 'recently used', 1: 'other commands' };
 
 /** Command palette overlay. `query` is what's typed after ">"; matching commands are listed. */
-function palette({ query = 'Time Your Sheet', commands = COMMANDS, sel = 0, group = 'recently used' } = {}) {
-  const items = commands.map((name, i) => `<div class="pi${i === sel ? ' sel' : ''}"><span><mark>Time Your Sheet</mark>: ${esc(name)}</span>${
-    i === sel && group ? `<span class="group">${esc(group)}</span>` : ''}</div>`).join('');
+function palette({ query = 'Time Your Sheet', commands = COMMANDS, sel = 0, groups = GROUPS } = {}) {
+  const items = commands.map((name, i) => `<div class="pi${i === sel ? ' sel' : ''}${i > 0 && groups[i] ? ' sep' : ''}"><span><mark>Time Your Sheet</mark>: ${esc(name)}</span>${
+    groups[i] ? `<span class="group">${esc(groups[i])}</span>` : ''}</div>`).join('');
   return `<div class="palette"><div class="in">&gt;${esc(query)}<span class="caret"></span></div>${items}</div>`;
 }
 

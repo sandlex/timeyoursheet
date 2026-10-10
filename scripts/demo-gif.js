@@ -76,7 +76,7 @@ const FRAMES = [
   { step: 1, ms: 2600, clock: 'Mon 09:02', note: '', cursorLine: 0, statusOverride: '$(clock) Time Your Sheet: pick a note', focus: true,
     text: 'Open the Markdown note you already keep notes in.' },
   { step: 1, ms: 2600, clock: 'Mon 09:02', note: '', cursorLine: 0, statusOverride: '$(clock) Time Your Sheet: pick a note',
-    overlay: palette({ query: 'use current', commands: ['Use Current File as Note'], group: '' }),
+    overlay: palette({ query: 'use current', commands: ['Use Current File as Note'], groups: {} }),
     text: 'Point the extension at it: <b>Use Current File as Note</b>.' },
   ...['#', '####', '#### 2026', '#### 2026-10-05', '#### 2026-10-05\nbal', '#### 2026-10-05\nbalance', '#### 2026-10-05\nbalance -45m'].map((note, i, all) => ({
     step: 2, ms: i === all.length - 1 ? 2600 : 220, focus: i === all.length - 1, clock: 'Mon 09:03', note, cursorLine: note.split('\n').length - 1,
@@ -89,9 +89,12 @@ const FRAMES = [
     step: 4, ms: i === all.length - 1 ? 4200 : 650, clock: i < 2 ? 'Mon 10:14' : 'Mon 11:20', note: monday(n), cursorLine: lastLine(monday(n)),
     focus: i === all.length - 1, text: NOTES_TEXT,
   })),
+  { step: 5, ms: 3000, clock: 'Mon 14:54', note: full(), cursorLine: lastLine(full()), t: T(14, 54, 9),
+    overlay: palette(),
+    text: 'Stepping out? Run <b>Toggle In/Out</b> from the Command Palette (⇧⌘P) or a shortcut.' },
   { step: 5, ms: 2600, clock: 'Mon 14:54', note: full('14:54:09 out'), cursorLine: lastLine(full('14:54:09 out')), t: T(14, 54, 9), focus: true,
     statusMessage: 'Time Your Sheet: 14:54:09 out',
-    text: 'Stepping out? Run <b>Toggle In/Out</b> (bind it to a key). The time is added under today\'s notes.' },
+    text: 'The time is added under today\'s notes, and you\'re out.' },
   ...[T(14, 58, 9), T(15, 6, 9), T(15, 17, 9)].map((t, i) => ({
     step: 5, ms: i === 2 ? 2200 : 750, clock: `Mon ${String(Math.floor(t / 3600)).padStart(2, '0')}:${String(Math.floor(t / 60) % 60).padStart(2, '0')}`,
     note: full('14:54:09 out'), cursorLine: lastLine(full('14:54:09 out')), t, focus: true,
@@ -103,7 +106,7 @@ const FRAMES = [
   { step: 7, ms: 3400, clock: 'Mon 18:05', note: full('14:54:09 out', '15:32:04 in'), cursorLine: lastLine(full('14:54:09 out', '15:32:04 in')), t: T(18, 5, 12),
     overlay: quickPick({
       placeholder: 'After work hours: done for the day, or starting an evening session?',
-      items: [['$(debug-pause) Out', 'stayed late, done now'], ['$(play) In', 'back for an evening session']],
+      items: [['$(debug-pause) Out', 'stayed late, done now: counts from the end of work hours'], ['$(play) In', 'back for an evening session']],
     }),
     text: 'After hours, Toggle asks: did you stay late, or are you starting an evening session?' },
   { step: 7, ms: 3000, clock: 'Mon 18:05', note: full('14:54:09 out', '15:32:04 in', '18:05:12 out'), cursorLine: lastLine(full('14:54:09 out', '15:32:04 in', '18:05:12 out')),
