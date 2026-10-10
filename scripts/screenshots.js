@@ -54,9 +54,10 @@ function colorLine(line, inFence) {
   return esc(line);
 }
 
-function render({ note, t, cursorLine, hoverStatus, statusMessage, overlay }) {
+function render({ note, t, cursorLine, hoverStatus, statusMessage, overlay, date = TODAY, statusOverride, statusFocus, caption = '', css = '' }) {
   const parsed = parseNote(note);
-  const result = computeBalance(parsed, resolveSettings({}).settings, { date: TODAY, t });
+  const result = computeBalance(parsed, resolveSettings({}).settings, { date, t });
+  const headerLine = note.split('\n').find((l) => l.includes(date) && /^#{1,6}\s/.test(l));
   const lenses = new Map(result.days.map((d) => [d.headerLine, lensTitle(d)]));
 
   let inFence = false;
@@ -138,6 +139,9 @@ body { padding: 28px; font-family: Inter, -apple-system, sans-serif; font-size: 
 .palette .keys { margin-left: auto; display: flex; gap: 3px; }
 .palette kbd { font-family: Inter, sans-serif; font-size: 11px; border: 1px solid #c9c1a9; border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: #f5efdc; color: #586e75; }
 .palette .group { margin-left: auto; color: #d9ecf8; font-size: 12px; }
+.palette .pi:not(.sel) .group { color: #93a1a1; }
+.status .ours.focus { background: #268bd2; color: #fff; }
+${css}
 </style></head><body><div class="win">
 <div class="title">
   <div class="lights"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div>
@@ -150,26 +154,34 @@ body { padding: 28px; font-family: Inter, -apple-system, sans-serif; font-size: 
   <div class="ed">
     <div class="tabs"><div class="tab">${icon('markdown')} time-sheet.md ${icon('close')}</div>
       <div class="acts">${icon('open-preview')}${icon('split-horizontal')}${icon('ellipsis')}</div></div>
-    <div class="crumbs">notes ${icon('chevron-right')} ${icon('markdown')} time-sheet.md ${icon('chevron-right')} #### ${TODAY}</div>
+    <div class="crumbs">notes ${icon('chevron-right')} ${icon('markdown')} time-sheet.md${headerLine ? ` ${icon('chevron-right')} ${esc(headerLine)}` : ''}</div>
     <div class="lines">${rows}</div>
   </div>
 </div>
 <div class="status">
   <span class="it remote">${icon('remote')}</span>
-  <span class="it ours${hoverStatus ? ' hl' : ''}">${withIcons(statusText(result, t))}</span>
+  <span class="it ours${hoverStatus ? ' hl' : ''}${statusFocus ? ' focus' : ''}">${withIcons(statusOverride || statusText(result, t))}</span>
   <span class="it">${icon('error')} 0 ${icon('warning')} 0</span>
   ${statusMessage ? `<span class="it msg">${esc(statusMessage)}</span>` : ''}
   <span class="right"><span class="it">Ln ${cursorLine + 1}, Col ${note.split('\n')[cursorLine].length + 1}</span><span class="it">LF</span><span class="it">{ } Markdown</span><span class="it">${icon('bell')}</span></span>
 </div>
 ${tooltip}${overlay || ''}
-</div></body></html>`;
+</div>${caption}</body></html>`;
 }
 
-function palette() {
-  const cmds = ['Toggle In/Out', 'Log In', 'Log Out', 'Open Note', 'Choose Note…', 'Use Current File as Note'];
-  const items = cmds.map((name, i) => `<div class="pi${i === 0 ? ' sel' : ''}"><span><mark>Time Your Sheet</mark>: ${esc(name)}</span>${
-    i === 0 ? '<span class="group">recently used</span>' : ''}</div>`).join('');
-  return `<div class="palette"><div class="in">&gt;Time Your Sheet<span class="caret"></span></div>${items}</div>`;
+const COMMANDS = ['Toggle In/Out', 'Log In', 'Log Out', 'Open Note', 'Choose Note…', 'Use Current File as Note'];
+
+/** Command palette overlay. `query` is what's typed after ">"; matching commands are listed. */
+function palette({ query = 'Time Your Sheet', commands = COMMANDS, sel = 0, group = 'recently used' } = {}) {
+  const items = commands.map((name, i) => `<div class="pi${i === sel ? ' sel' : ''}"><span><mark>Time Your Sheet</mark>: ${esc(name)}</span>${
+    i === sel && group ? `<span class="group">${esc(group)}</span>` : ''}</div>`).join('');
+  return `<div class="palette"><div class="in">&gt;${esc(query)}<span class="caret"></span></div>${items}</div>`;
+}
+
+/** Quick pick overlay (no ">" prefix): a placeholder and plain items with descriptions. */
+function quickPick({ placeholder, items, sel = 0 }) {
+  const rows = items.map(([label, desc], i) => `<div class="pi${i === sel ? ' sel' : ''}"><span>${withIcons(label)}</span><span class="group">${esc(desc)}</span></div>`).join('');
+  return `<div class="palette"><div class="in" style="color:#93a1a1">${esc(placeholder)}</div>${rows}</div>`;
 }
 
 const SHOTS = [
@@ -213,7 +225,11 @@ async function main() {
   await browser.close();
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
+
+module.exports = { render, palette, quickPick, withIcons, esc };
