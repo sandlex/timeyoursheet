@@ -6,9 +6,9 @@ You're assumed to be working during work hours. You only log the exceptions: ste
 
 Your note stays the database. There's no server, no account and no separate file: just a few lines mixed in with everything else you write during the day.
 
-![Demo: set up a note, step out, come back, stay late, and see the week's history](images/demo.gif)
+![Demo: set up a note, write ordinary notes in it, step out, come back, stay late, and see the week's history](images/demo.gif)
 
-*A 30-second tour: setup, stepping out, coming back, staying late, and the week's history.*
+*A short tour: setup, everyday notes (it's still your normal notes file), stepping out, coming back, staying late, and the week's history.*
 
 ![The balance in the status bar, with the last few days on hover and a summary above each day](images/balance.png)
 
